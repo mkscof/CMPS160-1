@@ -47,7 +47,7 @@ function main() {
   // Register function (event handler) to be called on a mouse press
   canvas.onmousedown = function(ev){ click(ev, gl, canvas, a_Position); };
   //Register function (event handler) for updating mouse position when moved
-  canvas.onmousemove = function(ev){ updateMousePos(ev, gl, canvas, a_Position); };
+  canvas.onmousemove = function(ev){ rubberband(ev, gl, canvas, a_Position); };
 
   // Specify the color for clearing <canvas>
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -59,6 +59,7 @@ function main() {
 var g_points = []; // The array for the position of a mouse press
 var prevX;
 var prevY;
+var done = 0; //Boolean for ending rubberband
 
 function click(ev, gl, canvas, a_Position) {
   var x = ev.clientX; // x coordinate of a mouse pointer
@@ -76,26 +77,31 @@ function click(ev, gl, canvas, a_Position) {
 
   var len = g_points.length / 2;
   var newArr = new Float32Array(g_points);
+  
   // Pass the position of a point to a_Position variable
   gl.bufferData(gl.ARRAY_BUFFER, newArr, gl.STATIC_DRAW);
 
   // Draw
   gl.drawArrays(gl.POINTS, 0, len);
   gl.drawArrays(gl.LINE_STRIP, 0, len);
-
-  prevX = x;
-  prevY = y;
 }
 
-function updateMousePos(ev, gl, canvas, a_Position){
+function rubberband(ev, gl, canvas, a_Position){
+  if(done){
+      return;
+  }
   var xPos = ev.clientX;
   var yPos = ev.clientY;
-  var positions = {
-    prevX, prevY, xPos, yPos
-  };
+  var rect = ev.target.getBoundingClientRect();
+
+  xPos = ((xPos - rect.left) - canvas.width/2)/(canvas.width/2);
+  yPos = (canvas.height/2 - (yPos - rect.top))/(canvas.height/2);
 
   // Clear <canvas>
   gl.clear(gl.COLOR_BUFFER_BIT);
+
+  g_points.push(xPos);
+  g_points.push(yPos);
 
   var len = g_points.length / 2;
   var newArr = new Float32Array(g_points);
@@ -103,16 +109,18 @@ function updateMousePos(ev, gl, canvas, a_Position){
   // Pass the position of a point to a_Position variable
   gl.bufferData(gl.ARRAY_BUFFER, newArr, gl.STATIC_DRAW);
 
+  //var elem = newArr.BYTES_PER_ELEMENT;
+
+  // gl.enableVertexAttribPointer(a_Position, 2, gl.FLOAT, false, BPE * 2);
+  // gl.enableVertexAttribArray(a_Position);
+
   //Draw
-  if(g_points.length > 1){
-    gl.drawArrays(gl.POINTS, 0, len);
-    gl.drawArrays(gl.LINE_STRIP, 0, len);
+  gl.vertexAttrib2f(a_Position, newArr[newArr.length - 2], newArr[newArr.length - 1], 0.0);
+  gl.drawArrays(gl.POINTS, 0, len);
+  gl.drawArrays(gl.LINE_STRIP, 0, len);
 
-    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW);
-    gl.drawArrays(gl.LINE_STRIP, 0, positions.length / 2);
-  }
-
-  return [xPos, yPos];
+  g_points.pop();
+  g_points.pop();
 }
 
 function initVertexBuffers(gl) {
