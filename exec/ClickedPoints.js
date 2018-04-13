@@ -48,8 +48,10 @@ function main() {
   canvas.onmousedown = function(ev){ click(ev, gl, canvas, a_Position); };
   //Register function (event handler) for updating mouse position when moved
   canvas.onmousemove = function(ev){ rubberband(ev, gl, canvas, a_Position); };
-  //Change color of lines on right click mouse release
-  //cbutton.addEventListener("click", colorChange(ev, gl, canvas, a_Position));
+  
+  //Move points up and to the right
+  var moveButton = document.getElementById("moveUp");
+  moveButton.onmousedown = function(ev){ moveUp(ev, gl, canvas, a_Position); };
 
   var cbutton = document.getElementById("lineColor");
   cbutton.onclick = function(ev){ colorChange(ev, gl, canvas, a_Position); };
@@ -132,26 +134,58 @@ function rubberband(ev, gl, canvas, a_Position){
   g_points.pop();
 }
 
-function colorChange(ev, gl, canvas, a_Position){
- /* if(color % 2 == 0){
-    gl_FragColor = (1.0, 0.0, 1.0, 1.0);
-    color++;
+function moveUp(ev, gl, canvas, a_Position){
+  var x = ev.clientX; // x coordinate of a mouse pointer
+  var y = ev.clientY; // y coordinate of a mouse pointer
+  var rect = ev.target.getBoundingClientRect() ;
+
+  x = ((x - rect.left) - canvas.width/2)/(canvas.width/2);
+  y = (canvas.height/2 - (y - rect.top))/(canvas.height/2);
+
+  // Clear <canvas>
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  var len = g_points.length / 2;
+  var newArr = new Float32Array(g_points);
+  
+  for(i = 0; i < newArr.length; i++){
+    newArr[i] += 0.5;
   }
-  else{
-    gl_FragColor = (1.0, 0.0, 0.0, 1.0);
-    color--;
-  }*/
-  VSHADER_SOURCE =
+
+  // Pass the position of a point to a_Position variable
+  gl.bufferData(gl.ARRAY_BUFFER, newArr, gl.STATIC_DRAW);
+
+  // Draw
+  gl.drawArrays(gl.POINTS, 0, len);
+  gl.drawArrays(gl.LINE_STRIP, 0, len);
+}
+
+function colorChange(ev, gl, canvas, a_Position){
+ VSHADER_SOURCE =
     'attribute vec4 a_Position;\n' +
     'void main() {\n' +
     '  gl_Position = a_Position;\n' +
     '  gl_PointSize = 10.0;\n' +
   '}\n';
+  if(color % 2 == 0){
+    FSHADER_SOURCE =
+      'void main() {\n' +
+      '  gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);\n' +
+    '}\n';
+    color++;
+  }
+  else{
+    FSHADER_SOURCE =
+      'void main() {\n' +
+      '  gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);\n' +
+    '}\n';
+    color--;
+  }
 
-  FSHADER_SOURCE =
-    'void main() {\n' +
-    '  gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);\n' +
-  '}\n';
+  // FSHADER_SOURCE =
+  //   'void main() {\n' +
+  //   '  gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);\n' +
+  // '}\n';
 
   if (!initShaders(gl, VSHADER_SOURCE, FSHADER_SOURCE)) {
     console.log('Failed to intialize shaders.');
